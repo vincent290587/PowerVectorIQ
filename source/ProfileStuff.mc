@@ -6,37 +6,28 @@ using Toybox.Lang;
 
 class TreadmillProfile
 {
-    private var _bleDelegate;
+    
+    // BLE profile variables
+	var inst_power;
+			
+	var cumul_crank_rev = 0;
+	var last_crank_evt = 0;
+	var first_crank_angle = 0;
 
+	var inst_torque_mag_array;
+	var f_mag_array;
     
-    var _device;
-    private var _profileManagerStuff;
-    private var _rawSpeed = 0l;
-    private var _rawIncline = 0l;
-    private var _speed = 0;  
-    var _incline = 0;
-    private var _totalDistance = 0;
-    private var _elevationGain = 0;
-    private var _totalEnergy = 0;
-    private var _pendingNotifies;
+    // BLE variables
+    hidden var _device;
+    hidden var _bleDelegate;
+    hidden var scanForUuid = null;
+    hidden var writeBusy = false;
+
+    hidden var _profileManagerStuff;
+    hidden var _pendingNotifies;
+    hidden var _isConnected = false;
     
-    //offsets;
-    private var _speedOffset = 2;
-    private var _averageSpeedOffset = 4;
-    private var _totalDistanceOffset = 6;
-    private var _inclineOffset = 9;
-    private var _rampAngleOffset = 11;
-    private var _positiveElevationGainOffset = 13;
-    private var _negativeElevationGainOffset = 15;
-    private var _totalEnergyOffset = 19;
-    private var _isConnected = false;
-    
-    private var stack = new[0];
-    
-    //
-    var scanForUuid = null;
-    var writeBusy = false;
-    
+    hidden var stack = new[0];
     
 
 	public function wordToUuid(uuid)
@@ -58,40 +49,6 @@ class TreadmillProfile
 		return _isConnected;
 	}
 	
-    function getRawSpeed() 
-    {
-        return _rawSpeed;
-    }
-    function getSpeed() 
-    {
-        return _speed;
-    }
-
-	function getRawIncline() 
-    {
-        return _rawIncline;
-    }
-    function getIncline() 
-    {
-        return _incline;
-    }
-    
-   	function getRunningMets()
-   	{
-   		var mpm = _speed * 26.8224;
-    	return (0.2 * mpm + 0.9 * mpm * _incline/100 + 3.5)/3.5;
-   	}
-   
-
-    
-    function getTotalDistance() 
-    {
-        return _totalDistance;
-    }
-    function getElevationGain() 
-    {
-        return _elevationGain;
-    }
     private const _fitnessProfileDef = 
     {
     	:uuid => FITNESS_MACHINE_SERVICE,				
@@ -216,68 +173,88 @@ class TreadmillProfile
 		
 		if (cu.equals(POWER_MEASUREMENT_CHARACTERISTIC))
 		{
-			System.println("onCharacteristicChanged POWER_MEASUREMENT_CHARACTERISTIC");
+			System.println("POWER_MEASUREMENT_CHARACTERISTIC");
 		
-//			_rawSpeed = 3;
-//			_speed = _rawSpeed / 100.0f * 0.621371192f;
-//			_rawIncline = value.decodeNumber( Lang.NUMBER_FORMAT_UINT16, { :offset => _inclineOffset });
-	        _incline = _incline + 1;
-//	        
-//	        var temp = value.decodeNumber( Lang.NUMBER_FORMAT_UINT32, { :offset => _totalDistanceOffset });
-//	        temp = temp & 0x00ffffff;
-//	        _totalDistance = temp  *  0.000621371f;
-//	        _elevationGain = value.decodeNumber( Lang.NUMBER_FORMAT_UINT16, { :offset => _positiveElevationGainOffset }) / 10.0f * 3.28084f ;
-	        //_totalEnergy   = value.decodeNumber( Lang.NUMBER_FORMAT_UINT16, { :offset => _totalEnergyOffset }) / 10;
-	        //System.println(_totalEnergy);
-	        WatchUi.requestUpdate();
+			var offset = 0;
+			var flags = value.decodeNumber( Lang.NUMBER_FORMAT_UINT8, { :offset => offset });
+			offset+=1;
+			
+			inst_power = value.decodeNumber( Lang.NUMBER_FORMAT_SINT16, { :offset => offset });
+			offset+=2;
+			
 		}
 		
 		if (cu.equals(POWER_VECTOR_CHARACTERISTIC))
 		{
-			System.println("onCharacteristicChanged POWER_VECTOR_CHARACTERISTIC");
-		
-			_rawSpeed = _rawSpeed + 1;
-			_speed = _rawSpeed / 100.0f * 0.621371192f;
-//			_rawIncline = value.decodeNumber( Lang.NUMBER_FORMAT_UINT16, { :offset => _inclineOffset });
-//	        _incline = _incline + 1;
-//	        
-//	        var temp = value.decodeNumber( Lang.NUMBER_FORMAT_UINT32, { :offset => _totalDistanceOffset });
-//	        temp = temp & 0x00ffffff;
-//	        _totalDistance = temp  *  0.000621371f;
-//	        _elevationGain = value.decodeNumber( Lang.NUMBER_FORMAT_UINT16, { :offset => _positiveElevationGainOffset }) / 10.0f * 3.28084f ;
-	        //_totalEnergy   = value.decodeNumber( Lang.NUMBER_FORMAT_UINT16, { :offset => _totalEnergyOffset }) / 10;
-	        //System.println(_totalEnergy);
-	        WatchUi.requestUpdate();
+			System.println("POWER_VECTOR_CHARACTERISTIC");
+			
+			var offset = 0;
+			var flags = value.decodeNumber( Lang.NUMBER_FORMAT_UINT8, { :offset => offset });
+			offset+=1;
+			
+			if (flags & 0x1)
+			{
+				f_mag_array = [];
+				inst_torque_mag_array = [];
+				
+				cumul_crank_rev = value.decodeNumber( Lang.NUMBER_FORMAT_UINT16, { :offset => offset });
+				offset+=2;
+				
+				last_crank_evt = value.decodeNumber( Lang.NUMBER_FORMAT_UINT16, { :offset => offset });
+				offset+=2;
+			}
+			
+			if (flags & 0x2)
+			{
+				first_crank_angle = value.decodeNumber( Lang.NUMBER_FORMAT_UINT16, { :offset => offset });
+				offset+=2;
+			}
+			
+			while (flags & 0x4 && offset < value.size())
+			{
+				var tmp = value.decodeNumber( Lang.NUMBER_FORMAT_SINT16, { :offset => offset });
+				offset+=2;
+				
+				f_mag_array = f_mag_array.add( tmp );
+			}
+			
+			while (flags & 0x8 && offset < value.size())
+			{
+				var tmp = value.decodeNumber( Lang.NUMBER_FORMAT_SINT16, { :offset => offset });
+				offset+=2;
+				
+				inst_torque_mag_array = inst_torque_mag_array.add( tmp );
+			}
+			
+		    WatchUi.requestUpdate();
 	         
 		}
 		
 		
 	}
 	
-	function setSpeed ( speed )
-    {
-	    if (speed < 0) {speed = 0;}
-	    if (speed > 12) {speed = 12;}
-        var kph = speed * 160.934;
-        var long1 = kph.toLong();//convert to kph and multiply by one humdred
-        var b1 = [0x02,0,0]b;   //starting with 2 means set speed
-        b1.encodeNumber(long1,Lang.NUMBER_FORMAT_UINT16,{:offset=>1,:endianness=>Lang.ENDIAN_LITTLE});
-        
-       	System.println("speed");
-        pushWrite(b1);
-    }
-    function setIncline ( incline )
-    {
-        var incl = incline * 10.0;
-        var long1 = incl.toLong();//convert to kph and multiply by one humdred
-        var b1 = [0x03,0,0]b;   //starting with 2 means set speed
-        b1.encodeNumber(long1,Lang.NUMBER_FORMAT_UINT16,{:offset=>1,:endianness=>Lang.ENDIAN_LITTLE});
-        
-       	System.println("incline");
-       	pushWrite(b1);
-    }
-	
-	
+//	function setSpeed ( speed )
+//    {
+//	    if (speed < 0) {speed = 0;}
+//	    if (speed > 12) {speed = 12;}
+//        var kph = speed * 160.934;
+//        var long1 = kph.toLong();//convert to kph and multiply by one humdred
+//        var b1 = [0x02,0,0]b;   //starting with 2 means set speed
+//        b1.encodeNumber(long1,Lang.NUMBER_FORMAT_UINT16,{:offset=>1,:endianness=>Lang.ENDIAN_LITTLE});
+//        
+//       	System.println("speed");
+//        pushWrite(b1);
+//    }
+//    function setIncline ( incline )
+//    {
+//        var incl = incline * 10.0;
+//        var long1 = incl.toLong();//convert to kph and multiply by one humdred
+//        var b1 = [0x03,0,0]b;   //starting with 2 means set speed
+//        b1.encodeNumber(long1,Lang.NUMBER_FORMAT_UINT16,{:offset=>1,:endianness=>Lang.ENDIAN_LITTLE});
+//        
+//       	System.println("incline");
+//       	pushWrite(b1);
+//    }
 	
 	function onConnectedStateChanged( device, state )
 	{

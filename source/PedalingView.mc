@@ -61,7 +61,7 @@ class PedalingView extends WatchUi.DataField {
 //            }
 //        }
         
-        mValue = _treadmillProfile._incline;
+        mValue = _treadmillProfile.inst_power;
     }
 
     // Display the value you computed here. This will be called
