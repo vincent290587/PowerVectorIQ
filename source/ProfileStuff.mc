@@ -86,6 +86,15 @@ class TreadmillProfile
 		Ble.registerProfile( _fitnessProfileDef );
 		_bleDelegate = new TreadmillDelegate(self);  //pass it this
 	    Ble.setDelegate( _bleDelegate );
+	    
+		inst_power = 0;
+				
+		cumul_crank_rev = 0;
+		last_crank_evt = 0;
+		first_crank_angle = 10;
+	
+		inst_torque_mag_array = [50, 60, 70, 80];
+		f_mag_array = [];
 	}
 
     private function activateNextNotification() {
@@ -266,16 +275,16 @@ class TreadmillProfile
 	    	System.println("BleDelegate.onConnectedStateChanged");
 
 			var service = device.getService(FITNESS_MACHINE_SERVICE );
-			
-			var characteristic = service.getCharacteristic(POWER_VECTOR_CHARACTERISTIC);
- 	        var cccd = characteristic.getDescriptor(Ble.cccdUuid());
- 	        cccd.requestWrite([0x01, 0x00]b);
 	
 			_pendingNotifies = [];
-	        characteristic = service.getCharacteristic(POWER_MEASUREMENT_CHARACTERISTIC );
+	        var characteristic = service.getCharacteristic(POWER_MEASUREMENT_CHARACTERISTIC );
 	        if( null != characteristic ) {
 	            _pendingNotifies = _pendingNotifies.add( characteristic );
 	        }
+			
+			characteristic = service.getCharacteristic(POWER_VECTOR_CHARACTERISTIC);
+ 	        var cccd = characteristic.getDescriptor(Ble.cccdUuid());
+ 	        cccd.requestWrite([0x01, 0x00]b);
 	    }
 	    if (state == Ble.CONNECTION_STATE_DISCONNECTED)
 	    {
