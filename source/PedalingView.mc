@@ -126,6 +126,36 @@ class PedalingView extends WatchUi.DataField {
 	  return res;
 	}
 	
+	private function calculate_color( power )
+	{
+		if (power > 324)
+		{
+			return Graphics.COLOR_RED;
+		} 
+		else if(power > 284)
+		{
+			return Graphics.COLOR_ORANGE;
+		} 
+		else if(power > 243)
+		{
+			return Graphics.COLOR_YELLOW;
+		} 
+		else if(power > 203)
+		{
+			return Graphics.COLOR_GREEN;
+		} 
+		else if(power > 149)
+		{
+			return Graphics.COLOR_BLUE;
+		} 
+		else
+		{
+			return Graphics.COLOR_LT_GRAY;
+		}
+	
+		return Graphics.COLOR_BLUE;
+	}
+	
 	private function draw_power_vector( dc ) 
     {
         
@@ -155,15 +185,15 @@ class PedalingView extends WatchUi.DataField {
 	        var delta_angle = 359.0f / _treadmillProfile.inst_torque_mag_array.size();
 	        for (var i=0 ; i < _treadmillProfile.inst_torque_mag_array.size(); i++)
 	        {
-	        	var cur_angle_deg = _treadmillProfile.first_crank_angle + map(i, 0.0f, _treadmillProfile.inst_torque_mag_array.size(), 0, 360.0f);
+	        	var cur_angle_deg = _treadmillProfile.first_crank_angle + map(i, 0.0f, _treadmillProfile.inst_torque_mag_array.size(), 0, 359.9f);
 	        	var cur_torque_dr = map(_treadmillProfile.inst_torque_mag_array[i], 0.0f, max_torque, 0.0f, max_circle_diam);
 	        	
-	        	if (cur_angle_deg > 359)
+	        	if (cur_angle_deg > 359.99f)
 	        	{
 	        		cur_angle_deg = cur_angle_deg - 360;
 	        	}
 
-		        dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
+		        dc.setColor(calculate_color(_treadmillProfile.inst_power), Graphics.COLOR_TRANSPARENT);
 		        
 		        for (var th=0; th < 4; ++th)
 		        {
