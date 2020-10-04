@@ -16,6 +16,9 @@ class TreadmillProfile
 
 	var inst_torque_mag_array;
 	var f_mag_array;
+
+	var committed_torque_mag_array;
+	var committed_force_mag_array;
     
     // BLE variables
     hidden var _device;
@@ -93,8 +96,11 @@ class TreadmillProfile
 		last_crank_evt = 0;
 		first_crank_angle = 10;
 	
-		inst_torque_mag_array = [50, 60, 70, 80];
+		inst_torque_mag_array = [];
 		f_mag_array = [];
+
+		committed_torque_mag_array = [50, 60, 70, 80];
+		committed_force_mag_array = [];
 	}
 
     private function activateNextNotification() {
@@ -182,11 +188,11 @@ class TreadmillProfile
 		
 		if (cu.equals(POWER_MEASUREMENT_CHARACTERISTIC))
 		{
-			System.println("POWER_MEASUREMENT_CHARACTERISTIC");
+			//System.println("POWER_MEASUREMENT_CHARACTERISTIC");
 		
 			var offset = 0;
-			var flags = value.decodeNumber( Lang.NUMBER_FORMAT_UINT8, { :offset => offset });
-			offset+=1;
+			var flags = value.decodeNumber( Lang.NUMBER_FORMAT_UINT16, { :offset => offset });
+			offset+=2;
 			
 			inst_power = value.decodeNumber( Lang.NUMBER_FORMAT_SINT16, { :offset => offset });
 			offset+=2;
@@ -195,16 +201,31 @@ class TreadmillProfile
 		
 		if (cu.equals(POWER_VECTOR_CHARACTERISTIC))
 		{
-			System.println("POWER_VECTOR_CHARACTERISTIC");
-			
+			var order_refresh = 0;
 			var offset = 0;
 			var flags = value.decodeNumber( Lang.NUMBER_FORMAT_UINT8, { :offset => offset });
 			offset+=1;
 			
+			System.println("POWER_VECTOR_CHARACTERISTIC flags:" + flags);
+			
 			if (flags & 0x1)
 			{
-				f_mag_array = [];
+				
+				committed_torque_mag_array = [];
+				committed_force_mag_array = [];
+				
+				// commit temporary arrays
+				committed_torque_mag_array.addAll(inst_torque_mag_array);
+				committed_force_mag_array.addAll(f_mag_array);
+			
+				System.println("Commiting array size: " + inst_torque_mag_array.size());
+				
+				// order a refresh later
+				order_refresh = 1;
+				
+				// reset temporary arrays
 				inst_torque_mag_array = [];
+				f_mag_array = [];
 				
 				cumul_crank_rev = value.decodeNumber( Lang.NUMBER_FORMAT_UINT16, { :offset => offset });
 				offset+=2;
@@ -224,7 +245,7 @@ class TreadmillProfile
 				var tmp = value.decodeNumber( Lang.NUMBER_FORMAT_SINT16, { :offset => offset });
 				offset+=2;
 				
-				f_mag_array = f_mag_array.add( tmp );
+				f_mag_array.add( tmp );
 			}
 			
 			while (flags & 0x8 && offset < value.size())
@@ -232,10 +253,13 @@ class TreadmillProfile
 				var tmp = value.decodeNumber( Lang.NUMBER_FORMAT_SINT16, { :offset => offset });
 				offset+=2;
 				
-				inst_torque_mag_array = inst_torque_mag_array.add( tmp );
+				inst_torque_mag_array.add( tmp );
 			}
 			
-		    WatchUi.requestUpdate();
+			if (order_refresh > 0)
+			{
+		    	WatchUi.requestUpdate();
+		    }
 	         
 		}
 		
@@ -272,19 +296,19 @@ class TreadmillProfile
 			_isConnected = true;
 			WatchUi.requestUpdate();
 			_device = device;
-	    	System.println("BleDelegate.onConnectedStateChanged");
+	    	System.println("Ble.CONNECTION_STATE_CONNECTED");
 
 			var service = device.getService(FITNESS_MACHINE_SERVICE );
+			
+			var characteristic = service.getCharacteristic(POWER_VECTOR_CHARACTERISTIC);
+ 	        var cccd = characteristic.getDescriptor(Ble.cccdUuid());
+ 	        cccd.requestWrite([0x01, 0x00]b);
 	
 			_pendingNotifies = [];
-	        var characteristic = service.getCharacteristic(POWER_MEASUREMENT_CHARACTERISTIC );
+	        characteristic = service.getCharacteristic(POWER_MEASUREMENT_CHARACTERISTIC );
 	        if( null != characteristic ) {
 	            _pendingNotifies = _pendingNotifies.add( characteristic );
 	        }
-			
-			characteristic = service.getCharacteristic(POWER_VECTOR_CHARACTERISTIC);
- 	        var cccd = characteristic.getDescriptor(Ble.cccdUuid());
- 	        cccd.requestWrite([0x01, 0x00]b);
 	    }
 	    if (state == Ble.CONNECTION_STATE_DISCONNECTED)
 	    {
