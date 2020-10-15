@@ -123,13 +123,6 @@ class TreadmillProfile
 
             activateNextNotification();
         }
-        else if ( _pendingNotifies.size() > 0 ) {
-        
-        	System.println("processCccdWrite");
-            activateNextNotification();
-            
-            _pendingNotifies = [];
-        }
         else {
             _pendingNotifies = [];
         }
@@ -291,28 +284,49 @@ class TreadmillProfile
 	
 	function onConnectedStateChanged( device, state )
 	{
-		if (state == Ble.CONNECTION_STATE_CONNECTED)
+		if( device != _device ) {
+            // Not our device
+            return;
+        }
+	
+		if (device.isConnected())
 		{
 			_isConnected = true;
 			WatchUi.requestUpdate();
 			_device = device;
 	    	System.println("Ble.CONNECTION_STATE_CONNECTED");
 
-			var service = device.getService(FITNESS_MACHINE_SERVICE );
+			var service = device.getService(FITNESS_MACHINE_SERVICE);
 			
-			var characteristic = service.getCharacteristic(POWER_VECTOR_CHARACTERISTIC);
- 	        var cccd = characteristic.getDescriptor(Ble.cccdUuid());
- 	        cccd.requestWrite([0x01, 0x00]b);
-	
-			_pendingNotifies = [];
-	        characteristic = service.getCharacteristic(POWER_MEASUREMENT_CHARACTERISTIC );
-	        if( null != characteristic ) {
-	            _pendingNotifies = _pendingNotifies.add( characteristic );
-	        }
-	    }
-	    if (state == Ble.CONNECTION_STATE_DISCONNECTED)
-	    {
+			if ( service != null )
+			{
+				// get char1
+				var characteristic = service.getCharacteristic(POWER_VECTOR_CHARACTERISTIC);
+				
+				_pendingNotifies = [];
+				
+				if ( null != characteristic )
+				{
+		            _pendingNotifies = _pendingNotifies.add( characteristic );
+				}
+		
+				// get char2
+		        characteristic = service.getCharacteristic(POWER_MEASUREMENT_CHARACTERISTIC );
+		        if( null != characteristic ) {
+		            _pendingNotifies = _pendingNotifies.add( characteristic );
+	        	}
+
+        		activateNextNotification();
+				
+			} else
+			{
+				System.println("Unpairing wrong device");
+				//var d = Ble.unpairDevice( _device );
+        		//_device = null;
+			}
+	    } else {
 	    	_isConnected = false;
+	    	_device = null;
 	    	System.println("Disconnected");
 
 			_pendingNotifies = [];
@@ -342,8 +356,8 @@ class TreadmillProfile
             if( result.getRawData()[2] == 128 )  // result.getRawData()[2] == 128 contains( result.getServiceUuids(), scanForUuid)
             {
             
-        		 Ble.setScanState( Ble.SCAN_STATE_OFF );
-    			var d = Ble.pairDevice( result );
+        		Ble.setScanState( Ble.SCAN_STATE_OFF );
+    			_device = Ble.pairDevice( result );
             }
         }
     
