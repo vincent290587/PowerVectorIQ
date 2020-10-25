@@ -259,10 +259,11 @@ class TreadmillProfile
         } else {
             _isConnected = false;
             _device = null;
+            _pendingNotifies = [];
             System.println("Disconnected");
+
             Ble.setScanState( Ble.SCAN_STATE_SCANNING );
 
-            _pendingNotifies = [];
         }
     }
 
@@ -289,10 +290,15 @@ class TreadmillProfile
 
             var name = result.getDeviceName();
 
-            if( name.find("Neo") >= 0 )  // result.getRawData()[2] == 128 contains( result.getServiceUuids(), scanForUuid)
+            if( _device == null && name != null)  // contains( result.getServiceUuids(), scanForUuid)
             {
-                Ble.setScanState( Ble.SCAN_STATE_OFF );
-                _device = Ble.pairDevice( result );
+                if (name.find("Neo") != null)
+                {
+                    Ble.setScanState( Ble.SCAN_STATE_OFF );
+                    _pendingNotifies = [];
+                    _device = Ble.pairDevice( result );
+                    return;
+                }
             }
         }
 
