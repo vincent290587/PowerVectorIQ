@@ -2,7 +2,8 @@ using Toybox.Application;
 
 class PedalingApp extends Application.AppBase {
 
-	var _treadmillProfile = null;
+    var _treadmillProfile = null;
+
     function initialize() {
         AppBase.initialize();
         _treadmillProfile = new TreadmillProfile();
@@ -15,6 +16,7 @@ class PedalingApp extends Application.AppBase {
 
     // onStop() is called when your application is exiting
     function onStop(state) {
+        _treadmillProfile.unpair();
     }
 
     //! Return the initial view of your application here
