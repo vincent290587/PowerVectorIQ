@@ -70,9 +70,14 @@ class TreadmillProfile
 
     function unpair()
     {
-        Ble.unpairDevice( _device );
+        if (_device != null)
+        {
+            Ble.unpairDevice( _device );
+            System.println("Unpaired");
+        }
         _device = null;
-        System.println("Unpaired");
+        _pendingNotifies = [];
+        //Ble.setScanState( Ble.SCAN_STATE_SCANNING );
     }
 
     function scanFor (serviceToScanFor)
