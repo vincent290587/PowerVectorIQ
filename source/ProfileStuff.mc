@@ -37,6 +37,9 @@ class TreadmillProfile
         return Ble.longToUuid(0x0000000000001000l + ((uuid & 0xffff).toLong() << 32), 0x800000805f9b34fbl);
     }
 
+    public const TACX_SERVICE   = Ble.longToUuid(0x6E40FEC1B5A3F393l, 0xE0A9E50E24DCCA9El);
+    public const TACX_RX   = Ble.longToUuid(0x6E40FEC2B5A3F393l, 0xE0A9E50E24DCCA9El);
+    public const TACX_TX   = Ble.longToUuid(0x6E40FEC3B5A3F393l, 0xE0A9E50E24DCCA9El);
 
     public const FITNESS_MACHINE_SERVICE                = wordToUuid(0x1818);
     public const POWER_MEASUREMENT_CHARACTERISTIC       = wordToUuid(0x2a63);
@@ -49,7 +52,7 @@ class TreadmillProfile
         return _isConnected;
     }
 
-    private const _fitnessProfileDef =
+    private var _fitnessProfileDef =
     {
         :uuid => FITNESS_MACHINE_SERVICE,
         :characteristics => [
@@ -65,6 +68,18 @@ class TreadmillProfile
                 Ble.cccdUuid()
             ]
 
+        }]
+    };
+
+    private var _fecProfileDef =
+    {
+        :uuid => TACX_SERVICE,
+        :characteristics => [{
+            :uuid => TACX_RX,
+            :descriptors => [Ble.cccdUuid()]
+        }, {
+            :uuid => TACX_TX,
+            :descriptors => [Ble.cccdUuid()]
         }]
     };
 
@@ -87,11 +102,9 @@ class TreadmillProfile
         Ble.setScanState( Ble.SCAN_STATE_SCANNING );
     }
 
-    function initialize (  )
+    function initialize ()
     {
-        Ble.registerProfile( _fitnessProfileDef );
         _bleDelegate = new TreadmillDelegate(self);  //pass it this
-        Ble.setDelegate( _bleDelegate );
 
         inst_power = 0;
 
@@ -104,6 +117,21 @@ class TreadmillProfile
 
         committed_torque_mag_array = [50, 60, 70, 90];
         committed_force_mag_array = [];
+
+        Ble.setDelegate( _bleDelegate );
+    }
+
+    function registerProfiles ()
+    {
+
+        try {
+            Ble.registerProfile( _fitnessProfileDef );
+            //Ble.registerProfile( _fecProfileDef );
+        } catch(e) {
+            System.println(e.getErrorMessage());
+        }
+
+        scanFor(FITNESS_MACHINE_SERVICE);
     }
 
     private function activateNextNotification() {
@@ -163,7 +191,7 @@ class TreadmillProfile
             var flags = value.decodeNumber( Lang.NUMBER_FORMAT_UINT8, { :offset => offset });
             offset+=1;
 
-            System.println("POWER_VECTOR_CHARACTERISTIC flags:" + flags);
+            //System.println("POWER_VECTOR_CHARACTERISTIC flags:" + flags);
 
             if (flags & 0x1)
             {
@@ -263,11 +291,11 @@ class TreadmillProfile
             }
         } else {
             _isConnected = false;
-            _device = null;
+            //_device = null;
             _pendingNotifies = [];
             System.println("Disconnected");
 
-            Ble.setScanState( Ble.SCAN_STATE_SCANNING );
+            //Ble.setScanState( Ble.SCAN_STATE_SCANNING );
 
         }
     }
@@ -276,6 +304,7 @@ class TreadmillProfile
     {
         for( var uuid = iter.next(); uuid != null; uuid = iter.next() )
         {
+            System.println("found UUID="+uuid);
             if( uuid.equals( obj ) )
             {
                 return true;
@@ -291,11 +320,12 @@ class TreadmillProfile
         {
             System.println("BleDelegate.onScanResults RSSI="+result.getRssi());
             System.println("BleDelegate.onScanResults UUID="+result.getDeviceName());
-            System.println("BleDelegate.onScanResults UUID="+result.getServiceUuids());
+            System.println("BleDelegate.onScanResults UUID="+result.getRawData());
 
             var name = result.getDeviceName();
 
-            if( _device == null && name != null)  // contains( result.getServiceUuids(), scanForUuid)
+            //if( contains( result.getServiceUuids(), FITNESS_MACHINE_SERVICE) )
+            if( _device == null && name != null)
             {
                 if (name.find("Neo") != null)
                 {
@@ -336,6 +366,12 @@ class TreadmillDelegate extends Ble.BleDelegate
         BleDelegate.initialize();
         _parent = parent;
         System.println("BleDelegate.initialize");
+    }
+
+    function onProfileRegister(uuid, status) {
+
+        System.println("BleDelegate.onScanResults UUID="+uuid.toString());
+        System.println("status="+status);
     }
 
     function onScanResults( scanResults )

@@ -2,21 +2,26 @@ using Toybox.Application;
 
 class PedalingApp extends Application.AppBase {
 
-    var _treadmillProfile = null;
+    private var _treadmillProfile = null;
 
     function initialize() {
         AppBase.initialize();
-        _treadmillProfile = new TreadmillProfile();
     }
 
     // onStart() is called on application start up
     function onStart(state) {
-        _treadmillProfile.scanFor(_treadmillProfile.FITNESS_MACHINE_SERVICE);
+        //Create the sensor object and open it
+        try {
+            _treadmillProfile = new TreadmillProfile();
+            _treadmillProfile.registerProfiles();
+        } catch (e) {
+            System.println(e.getErrorMessage());
+        }
     }
 
     // onStop() is called when your application is exiting
     function onStop(state) {
-        _treadmillProfile.unpair();
+        _treadmillProfile = null;
     }
 
     //! Return the initial view of your application here

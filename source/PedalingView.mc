@@ -4,22 +4,26 @@ using Toybox.Graphics;
 class PedalingView extends WatchUi.DataField {
 
     hidden var inst_power;
-	hidden var first_crank_angle;
-	hidden var inst_torque_mag_array;
-	
-	var _treadmillProfile;
-	//var backgroundLayer;
+    hidden var first_crank_angle;
+    hidden var inst_torque_mag_array;
+
+    var _treadmillProfile;
+    //var backgroundLayer;
 
     function initialize(tp) {
         DataField.initialize();
-		_treadmillProfile = tp;
-		
+        _treadmillProfile = tp;
+
         inst_power = 0;
-        
+
         // create a 240x240 layer, at [0,0] offset from the top-left corner of the screen
-		//backgroundLayer = new WatchUi.Layer();
-		// add layer to View as background
-		//View.addLayer(backgroundLayer);
+        //backgroundLayer = new WatchUi.Layer();
+        // add layer to View as background
+        //View.addLayer(backgroundLayer);
+    }
+
+    function terminate() {
+        _treadmillProfile = null;
     }
 
     // Set your layout here. Anytime the size of obscurity of
@@ -62,21 +66,21 @@ class PedalingView extends WatchUi.DataField {
     // guarantee that compute() will be called before onUpdate().
     function compute(info) {
     }
-    
+
     function refresh_model() {
-    
-		first_crank_angle = _treadmillProfile.first_crank_angle - 90.0f;
-		if (first_crank_angle < 0)
-		{
-			first_crank_angle += 360.0f;
-		}
-		
-		inst_torque_mag_array = [];
-		inst_torque_mag_array.addAll(_treadmillProfile.committed_torque_mag_array);
-    
+
+        first_crank_angle = _treadmillProfile.first_crank_angle - 90.0f;
+        if (first_crank_angle < 0)
+        {
+            first_crank_angle += 360.0f;
+        }
+
+        inst_torque_mag_array = [];
+        inst_torque_mag_array.addAll(_treadmillProfile.committed_torque_mag_array);
+
         inst_power = _treadmillProfile.inst_power;
     }
-    
+
     private function _drawArc(dc, centerX, centerY, radius, startAngle, endAngle, fill) {
         var points = new [30];
         var halfHeight = dc.getHeight() / 2;
@@ -99,131 +103,131 @@ class PedalingView extends WatchUi.DataField {
             dc.drawLine(points[points.size()-1][0], points[points.size()-1][1], points[0][0], points[0][1]);
         }
     }
-    
-	private function min(b1_i, b2_i)
-	{
-	  if (b1_i > b2_i) {
-	  	return b2_i;
-	  }
-	  return b1_i;
-    }
-    
-	private function max(b1_i, b2_i)
-	{
-	  if (b1_i < b2_i) {
-	  	return b2_i;
-	  }
-	  return b1_i;
-    }
-    
-	private function map(val, b1_i, b1_f, b2_i, b2_f)
-	{
-	
-	  if (b1_f == b1_i) {
-	  	return b2_i;
-	  }
-	
-	  var x;
-	  var res;
-	  // calcul x
-	  x = (val - b1_i) / (b1_f - b1_i);
-	  
-	  // calcul valeur: x commun
-	  res = x * (b2_f - b2_i) + b2_i;
-	  if (res < min(b2_i,b2_f))
-	  {
-	  	res = min(b2_i,b2_f);
-	  }
-	  if (res > max(b2_i,b2_f))
-      {
-      	res = max(b2_i,b2_f);
-      }
-	  return res;
-	}
-	
-	private function calculate_color( power )
-	{
-		if (power > 324)
-		{
-			return Graphics.COLOR_RED;
-		} 
-		else if(power > 284)
-		{
-			return Graphics.COLOR_ORANGE;
-		} 
-		else if(power > 243)
-		{
-			return Graphics.COLOR_YELLOW;
-		} 
-		else if(power > 203)
-		{
-			return Graphics.COLOR_GREEN;
-		} 
-		else if(power > 149)
-		{
-			return Graphics.COLOR_BLUE;
-		} 
-		else
-		{
-			return Graphics.COLOR_LT_GRAY;
-		}
-	
-		return Graphics.COLOR_BLUE;
-	}
-	
-	private function draw_power_vector( dc ) 
+
+    private function min(b1_i, b2_i)
     {
-        
+      if (b1_i > b2_i) {
+        return b2_i;
+      }
+      return b1_i;
+    }
+
+    private function max(b1_i, b2_i)
+    {
+      if (b1_i < b2_i) {
+        return b2_i;
+      }
+      return b1_i;
+    }
+
+    private function map(val, b1_i, b1_f, b2_i, b2_f)
+    {
+
+      if (b1_f == b1_i) {
+        return b2_i;
+      }
+
+      var x;
+      var res;
+      // calcul x
+      x = (val - b1_i) / (b1_f - b1_i);
+
+      // calcul valeur: x commun
+      res = x * (b2_f - b2_i) + b2_i;
+      if (res < min(b2_i,b2_f))
+      {
+        res = min(b2_i,b2_f);
+      }
+      if (res > max(b2_i,b2_f))
+      {
+        res = max(b2_i,b2_f);
+      }
+      return res;
+    }
+
+    private function calculate_color( power )
+    {
+        if (power > 324)
+        {
+            return Graphics.COLOR_RED;
+        }
+        else if(power > 284)
+        {
+            return Graphics.COLOR_ORANGE;
+        }
+        else if(power > 243)
+        {
+            return Graphics.COLOR_YELLOW;
+        }
+        else if(power > 203)
+        {
+            return Graphics.COLOR_GREEN;
+        }
+        else if(power > 149)
+        {
+            return Graphics.COLOR_BLUE;
+        }
+        else
+        {
+            return Graphics.COLOR_LT_GRAY;
+        }
+
+        return Graphics.COLOR_BLUE;
+    }
+
+    private function draw_power_vector( dc )
+    {
+
         var width;
         var height;
-        
+
         var max_circle_diam = 90;
 
         width = dc.getWidth();
         height = dc.getHeight();
-        
+
         if (inst_torque_mag_array.size() > 0)
         {
-	        var max_torque;
-	        
-	        // calculate the max torque
-	        max_torque = inst_torque_mag_array[0];
-	        for (var i=1 ; i < inst_torque_mag_array.size(); i++)
-	        {
-	        	if (max_torque < inst_torque_mag_array[i])
-	        	{
-	        		max_torque = inst_torque_mag_array[i];
-	        	}
-	        }
-	        
-	        // map the current torque to the max torque
-	        var delta_angle = 359.0f / inst_torque_mag_array.size();
-	        for (var i=0 ; i < inst_torque_mag_array.size(); i++)
-	        {
-	        	var cur_angle_deg = first_crank_angle + map(i, 0.0f, inst_torque_mag_array.size(), 0, 359.9f);
-	        	var cur_torque_dr = map(inst_torque_mag_array[i], 0.0f, max_torque, 30.0f, max_circle_diam);
-	        	
-	        	if (cur_angle_deg > 359.99f)
-	        	{
-	        		cur_angle_deg = cur_angle_deg - 360;
-	        	}
+            var max_torque;
 
-		        dc.setColor(calculate_color(inst_power), Graphics.COLOR_TRANSPARENT);
-		        
-		        for (var th=0; th < 4; ++th)
-		        {
-			        dc.drawArc(width / 2, height / 2, cur_torque_dr+th, Graphics.ARC_COUNTER_CLOCKWISE, 
-			        	cur_angle_deg - delta_angle/2, cur_angle_deg + delta_angle/2);
-		        }
-	        }
-        
+            // calculate the max torque
+            max_torque = inst_torque_mag_array[0];
+            for (var i=1 ; i < inst_torque_mag_array.size(); i++)
+            {
+                if (max_torque < inst_torque_mag_array[i])
+                {
+                    max_torque = inst_torque_mag_array[i];
+                }
+            }
+
+            // map the current torque to the max torque
+            var delta_angle = 359.0f / inst_torque_mag_array.size();
+            for (var i=0 ; i < inst_torque_mag_array.size(); i++)
+            {
+                var cur_angle_deg = first_crank_angle + map(i, 0.0f, inst_torque_mag_array.size(), 0, 359.9f);
+                var cur_torque_dr = map(inst_torque_mag_array[i], 0.0f, max_torque, 30.0f, max_circle_diam);
+
+                if (cur_angle_deg > 359.99f)
+                {
+                    cur_angle_deg = cur_angle_deg - 360;
+                }
+
+                dc.setColor(calculate_color(inst_power), Graphics.COLOR_TRANSPARENT);
+
+                for (var th=0; th < 4; ++th)
+                {
+                    dc.drawArc(width / 2, height / 2, cur_torque_dr+th, Graphics.ARC_COUNTER_CLOCKWISE,
+                        cur_angle_deg - delta_angle/2, cur_angle_deg + delta_angle/2);
+                }
+            }
+
         }
     }
 
     // Display the value you computed here. This will be called
     // once a second when the data field is visible.
     function onUpdate(dc) {
-    
+
         // Set the background color
         View.findDrawableById("Background").setColor(getBackgroundColor());
 
@@ -238,10 +242,10 @@ class PedalingView extends WatchUi.DataField {
 
         // Call parent's onUpdate(dc) to redraw the layout
         View.onUpdate(dc);
-        
+
         //backgroundLayer.setX(dc.getWidth()/2);
         //backgroundLayer.setY(dc.getWidth()/2);
-        
+
         refresh_model();
         // next, draw on the DC (View.onUpdate(dc) clears it !)
         draw_power_vector(dc); // backgroundLayer.getDc()
